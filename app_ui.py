@@ -16,12 +16,6 @@ load_dotenv(find_dotenv())
 elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 genai_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Initialize Gemini Embedding Function for ChromaDB
-google_ef = embedding_functions.GoogleGeminiEmbeddingFunction(
-    api_key=os.getenv("GEMINI_API_KEY"),
-    model_name="models/text-embedding-004"
-)
-
 # Page Configuration
 st.set_page_config(
     page_title="BoilerVoice AI Dashboard",
@@ -74,9 +68,14 @@ def ensure_csv_indexed_in_chroma(csv_filename: str = "boiler_inspection_data.csv
         return None
 
     chroma_client = chromadb.PersistentClient(path="./chroma_db")
+    
+    # Pass Gemini embedding function directly inline
     collection = chroma_client.get_or_create_collection(
         name="boiler_telemetry",
-        embedding_function=google_ef
+        embedding_function=embedding_functions.GoogleGeminiEmbeddingFunction(
+            api_key=os.getenv("GEMINI_API_KEY"),
+            model_name="models/text-embedding-004"
+        )
     )
 
     # Only index if collection is currently empty
