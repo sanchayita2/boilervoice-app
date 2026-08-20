@@ -16,6 +16,12 @@ load_dotenv(find_dotenv())
 elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 genai_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
+# Initialize Gemini Embedding Function for ChromaDB
+google_ef = embedding_functions.GoogleGeminiEmbeddingFunction(
+    api_key=os.getenv("GEMINI_API_KEY"),
+    model_name="models/text-embedding-004"
+)
+
 # Page Configuration
 st.set_page_config(
     page_title="BoilerVoice AI Dashboard",
@@ -63,16 +69,17 @@ st.markdown(
 
 
 def ensure_csv_indexed_in_chroma(csv_filename: str = "boiler_inspection_data.csv"):
+    """Vectorizes CSV rows into ChromaDB using remote Gemini API embeddings."""
     if not os.path.exists(csv_filename):
         return None
 
     chroma_client = chromadb.PersistentClient(path="./chroma_db")
-    # Pass embedding_function here:
     collection = chroma_client.get_or_create_collection(
-        name="boiler_telemetry", 
+        name="boiler_telemetry",
         embedding_function=google_ef
     )
 
+    # Only index if collection is currently empty
     if collection.count() == 0:
         df = pd.read_csv(csv_filename)
         documents, metadatas, ids = [], [], []
@@ -106,12 +113,12 @@ def transcribe_audio_bytes(audio_bytes) -> str:
 def query_llm_vector_rag(
     transcribed_text: str, csv_filename: str = "boiler_inspection_data.csv"
 ) -> str:
-    """Queries Gemini using ChromaDB vector retrieval instead of dumping full datasets into prompt context."""
+    """Queries Gemini using ChromaDB vector retrieval with API embeddings."""
     collection = ensure_csv_indexed_in_chroma(csv_filename)
     if collection is None:
         return f"Error: Dataset '{csv_filename}' not found."
 
-    # Retrieve only top 3 most relevant telemetry records from ChromaDB
+    # Retrieve top 3 relevant records from ChromaDB
     results = collection.query(query_texts=[transcribed_text], n_results=3)
     retrieved_docs = results["documents"][0] if results["documents"] else []
     retrieved_context = "\n".join(retrieved_docs)
@@ -128,7 +135,7 @@ def query_llm_vector_rag(
     for attempt in range(max_retries):
         try:
             response = genai_client.models.generate_content(
-                model="gemini-3.6-flash",
+                model="gemini-2.5-flash",
                 contents=full_prompt,
                 config={"system_instruction": system_instruction},
             )
@@ -174,7 +181,6 @@ with col_left:
 
     if os.path.exists(csv_file):
         df_data = pd.read_csv(csv_file)
-        # Display top 100 rows to prevent browser UI lag on large datasets
         st.dataframe(df_data.head(100), use_container_width=True, height=400)
         st.caption(f"Showing preview of top rows from total {len(df_data)} records.")
     else:
