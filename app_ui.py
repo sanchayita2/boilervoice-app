@@ -128,9 +128,9 @@ def query_llm_vector_rag(
     if collection is None:
         return f"Error: Dataset '{csv_filename}' not found."
 
-    # Retrieve top 3 relevant records from ChromaDB
+    # Retrieve top 15 relevant records to ensure all boilers/parameters are included in context
     try:
-        results = collection.query(query_texts=[transcribed_text], n_results=3)
+        results = collection.query(query_texts=[transcribed_text], n_results=15)
     except Exception as e:
         return f"Error: Vector search failed ({e})"
 
@@ -147,7 +147,7 @@ def query_llm_vector_rag(
     for attempt in range(max_retries):
         try:
             response = genai_client.models.generate_content(
-                model="gemini-3.6-flash",
+                model="gemini-2.5-flash",
                 contents=full_prompt,
                 config={"system_instruction": system_instruction},
             )
@@ -208,7 +208,7 @@ with col_left:
 with col_right:
     st.subheader("🎙️ Voice Assistant Control")
 
-    # Initialize dynamic key for resetting audio input widget state
+    # Dynamic session key to clear audio input on reset
     if "audio_key" not in st.session_state:
         st.session_state.audio_key = 0
 
@@ -278,7 +278,7 @@ with col_right:
                         except Exception as e:
                             st.error(f"Audio playback error: {e}")
 
-                # Instant reset button to prepare widget for next query without browser reload
+                # Reset button
                 if st.button("🔄 Clear & Ask Next Question"):
                     st.session_state.audio_key += 1
                     st.rerun()
