@@ -64,7 +64,7 @@ def query_hybrid_rag(
     print("🤖 Querying Gemini with Hybrid Context...")
 
     response = genai_client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.6-flash",
         contents=full_prompt,
         config={"system_instruction": system_instruction},
     )
