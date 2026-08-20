@@ -23,7 +23,7 @@ class GeminiEmbeddingFunction(chromadb.EmbeddingFunction):
         input_list = list(input) if not isinstance(input, list) else input
 
         response = genai_client.models.embed_content(
-            model="text-embedding-004",  # Without 'models/' prefix
+            model="gemini-embedding-001",  # text-embedding-004 was deprecated Jan 14, 2026
             contents=input_list,
         )
         return [list(e.values) for e in response.embeddings]
@@ -120,12 +120,19 @@ def query_llm_vector_rag(
     transcribed_text: str, csv_filename: str = "boiler_inspection_data.csv"
 ) -> str:
     """Queries Gemini using ChromaDB vector retrieval with API embeddings."""
-    collection = ensure_csv_indexed_in_chroma(csv_filename)
+    try:
+        collection = ensure_csv_indexed_in_chroma(csv_filename)
+    except Exception as e:
+        return f"Error: Failed to index/access the vector database ({e})"
+
     if collection is None:
         return f"Error: Dataset '{csv_filename}' not found."
 
     # Retrieve top 3 relevant records from ChromaDB
-    results = collection.query(query_texts=[transcribed_text], n_results=3)
+    try:
+        results = collection.query(query_texts=[transcribed_text], n_results=3)
+    except Exception as e:
+        return f"Error: Vector search failed ({e})"
     retrieved_docs = results["documents"][0] if results["documents"] else []
     retrieved_context = "\n".join(retrieved_docs)
 
