@@ -15,7 +15,7 @@ genai_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 # Define Google Gemini API Embedding Function
 google_ef = embedding_functions.GoogleGeminiEmbeddingFunction(
     api_key=os.getenv("GEMINI_API_KEY"),
-    model_name="models/text-embedding-004"
+    model_name="models/gemini-embedding-001"
 )
 
 
