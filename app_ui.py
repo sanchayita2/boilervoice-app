@@ -133,7 +133,6 @@ def query_llm_vector_rag(
         results = collection.query(query_texts=[transcribed_text], n_results=15)
     except Exception as e:
         return f"Error: Vector search failed ({e})"
-
     retrieved_docs = results["documents"][0] if results["documents"] else []
     retrieved_context = "\n".join(retrieved_docs)
 
@@ -147,7 +146,7 @@ def query_llm_vector_rag(
     for attempt in range(max_retries):
         try:
             response = genai_client.models.generate_content(
-                model="gemini-3.6-flash",
+                model="gemini-1.5-flash",
                 contents=full_prompt,
                 config={"system_instruction": system_instruction},
             )
@@ -159,6 +158,8 @@ def query_llm_vector_rag(
             else:
                 return "⚠️ The AI service is currently busy (503). Please wait a few seconds and try again."
         except Exception as e:
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                return "⚠️ API quota limit reached. Please try again later."
             return f"Error: {e}"
 
 
@@ -208,14 +209,7 @@ with col_left:
 with col_right:
     st.subheader("🎙️ Voice Assistant Control")
 
-    # Initialize dynamic key for resetting audio input widget state
-    if "audio_key" not in st.session_state:
-        st.session_state.audio_key = 0
-
-    audio_data = st.audio_input(
-        "Click the microphone to record your question",
-        key=f"audio_input_{st.session_state.audio_key}",
-    )
+    audio_data = st.audio_input("Click the microphone to record your question")
 
     if audio_data is None:
         st.info("👈 Click the microphone icon above and speak your question.")
@@ -277,11 +271,6 @@ with col_right:
                             )
                         except Exception as e:
                             st.error(f"Audio playback error: {e}")
-
-                # Instant reset button to prepare widget for next query
-                if st.button("🔄 Clear & Ask Next Question"):
-                    st.session_state.audio_key += 1
-                    st.rerun()
             else:
                 st.warning(
                     "⚠️ Could not recognize any speech. Please speak louder or check microphone permissions."
