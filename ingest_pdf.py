@@ -1,9 +1,17 @@
 import os
 import chromadb
+import chromadb.utils.embedding_functions as embedding_functions
 from dotenv import find_dotenv, load_dotenv
 from pypdf import PdfReader
 
+# Load environment variables
 load_dotenv(find_dotenv())
+
+# Define Google Gemini API Embedding Function
+google_ef = embedding_functions.GoogleGeminiEmbeddingFunction(
+    api_key=os.getenv("GEMINI_API_KEY"),
+    model_name="models/text-embedding-004"
+)
 
 
 def ingest_pdf_manual(
@@ -22,9 +30,12 @@ def ingest_pdf_manual(
         if text and text.strip():
             chunks.append({"text": text.strip(), "page": page_num + 1})
 
-    # Initialize persistent ChromaDB vector storage
+    # Initialize persistent ChromaDB vector storage with Gemini embeddings
     chroma_client = chromadb.PersistentClient(path="./chroma_db")
-    collection = chroma_client.get_or_create_collection(name=collection_name)
+    collection = chroma_client.get_or_create_collection(
+        name=collection_name, 
+        embedding_function=google_ef
+    )
 
     # Insert text chunks into vector collection
     for idx, chunk in enumerate(chunks):
@@ -35,7 +46,7 @@ def ingest_pdf_manual(
         )
 
     print(
-        f"✅ Ingested {len(chunks)} pages/chunks into ChromaDB collection '{collection_name}'."
+        f"✅ Ingested {len(chunks)} pages/chunks into ChromaDB collection '{collection_name}' using Gemini embeddings."
     )
 
 

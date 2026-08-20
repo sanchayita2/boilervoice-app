@@ -1,6 +1,7 @@
 import os
 import time
 import chromadb
+import chromadb.utils.embedding_functions as embedding_functions
 import pandas as pd
 import streamlit as st
 from dotenv import find_dotenv, load_dotenv
@@ -62,14 +63,16 @@ st.markdown(
 
 
 def ensure_csv_indexed_in_chroma(csv_filename: str = "boiler_inspection_data.csv"):
-    """Vectorizes CSV rows into ChromaDB if not already indexed, enabling scale for large datasets."""
     if not os.path.exists(csv_filename):
         return None
 
     chroma_client = chromadb.PersistentClient(path="./chroma_db")
-    collection = chroma_client.get_or_create_collection(name="boiler_telemetry")
+    # Pass embedding_function here:
+    collection = chroma_client.get_or_create_collection(
+        name="boiler_telemetry", 
+        embedding_function=google_ef
+    )
 
-    # Only index if collection is currently empty
     if collection.count() == 0:
         df = pd.read_csv(csv_filename)
         documents, metadatas, ids = [], [], []
