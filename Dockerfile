@@ -1,19 +1,26 @@
+# Use an official lightweight Python runtime
 FROM python:3.11-slim
 
-# Install system dependencies (ffmpeg required for audio handling)
-RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
-
+# Set working directory inside the container
 WORKDIR /app
 
-# Install Python packages
+# Install system dependencies required for build tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt-get/lists/*
+
+# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code into container
+# Copy project source code into container
 COPY . .
 
+# Expose Render default port
 EXPOSE 10000
 
+# Set Streamlit server host binding
 ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
 
-CMD ["sh", "-c", "streamlit run app_ui.py --server.port=${PORT:-10000} --server.address=0.0.0.0"]
+# Start Streamlit using Render's dynamic PORT and disable file watcher
+CMD ["sh", "-c", "streamlit run app_ui.py --server.port=${PORT:-10000} --server.address=0.0.0.0 --server.fileWatcherType=none"]
