@@ -16,10 +16,11 @@ elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 genai_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Custom ChromaDB Embedding Class using Google GenAI SDK
+# Custom ChromaDB Embedding Class using Google GenAI SDK
 class GeminiEmbeddingFunction(chromadb.EmbeddingFunction):
     def __call__(self, input: list[str]) -> list[list[float]]:
         response = genai_client.models.embed_content(
-            model="text-embedding-004",
+            model="text-embedding-004",  # Removed models/ prefix
             contents=input,
         )
         return [e.values for e in response.embeddings]
