@@ -23,7 +23,7 @@ class GeminiEmbeddingFunction(chromadb.EmbeddingFunction):
         input_list = list(input) if not isinstance(input, list) else input
 
         response = genai_client.models.embed_content(
-            model="gemini-embedding-001",  # text-embedding-004 was deprecated Jan 14, 2026
+            model="gemini-embedding-001",
             contents=input_list,
         )
         return [list(e.values) for e in response.embeddings]
@@ -133,6 +133,7 @@ def query_llm_vector_rag(
         results = collection.query(query_texts=[transcribed_text], n_results=3)
     except Exception as e:
         return f"Error: Vector search failed ({e})"
+
     retrieved_docs = results["documents"][0] if results["documents"] else []
     retrieved_context = "\n".join(retrieved_docs)
 
@@ -207,7 +208,14 @@ with col_left:
 with col_right:
     st.subheader("🎙️ Voice Assistant Control")
 
-    audio_data = st.audio_input("Click the microphone to record your question")
+    # Initialize dynamic key for resetting audio input widget state
+    if "audio_key" not in st.session_state:
+        st.session_state.audio_key = 0
+
+    audio_data = st.audio_input(
+        "Click the microphone to record your question",
+        key=f"audio_input_{st.session_state.audio_key}",
+    )
 
     if audio_data is None:
         st.info("👈 Click the microphone icon above and speak your question.")
@@ -269,6 +277,11 @@ with col_right:
                             )
                         except Exception as e:
                             st.error(f"Audio playback error: {e}")
+
+                # Instant reset button to prepare widget for next query without browser reload
+                if st.button("🔄 Clear & Ask Next Question"):
+                    st.session_state.audio_key += 1
+                    st.rerun()
             else:
                 st.warning(
                     "⚠️ Could not recognize any speech. Please speak louder or check microphone permissions."
