@@ -15,7 +15,7 @@ load_dotenv(find_dotenv())
 elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 genai_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Custom ChromaDB Embedding Function using Google GenAI SDK
+# Custom ChromaDB Embedding Class using Google GenAI SDK
 class GeminiEmbeddingFunction(chromadb.EmbeddingFunction):
     def __call__(self, input: list[str]) -> list[list[float]]:
         response = genai_client.models.embed_content(
@@ -79,9 +79,10 @@ def ensure_csv_indexed_in_chroma(csv_filename: str = "boiler_inspection_data.csv
 
     chroma_client = chromadb.PersistentClient(path="./chroma_db")
     collection = chroma_client.get_or_create_collection(
-        name="boiler_telemetry",
-        embedding_function=google_ef
-    )
+    name="boiler_telemetry",
+    embedding_function=google_ef
+)
+    
 
     # Only index if collection is currently empty
     if collection.count() == 0:
