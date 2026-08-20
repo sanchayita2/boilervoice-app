@@ -8,30 +8,32 @@ from elevenlabs.client import ElevenLabs
 from google import genai
 from google.genai.errors import ServerError
 
-# Load environment variables from .env
+# Load environment variables from .env file
 load_dotenv(find_dotenv())
 
-# Initialize API clients
+# Initialize API clients using environment variables
 elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 genai_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Custom ChromaDB Embedding Class using Google GenAI SDK
-# Custom ChromaDB Embedding Class using Google GenAI SDK
+
+# Custom ChromaDB Embedding Class using the Google GenAI SDK
 class GeminiEmbeddingFunction(chromadb.EmbeddingFunction):
     def __call__(self, input: list[str]) -> list[list[float]]:
+        # Ensure input is passed as a standard python list
+        input_list = list(input) if not isinstance(input, list) else input
+
         response = genai_client.models.embed_content(
-            model="text-embedding-004",  # Removed models/ prefix
-            contents=input,
+            model="text-embedding-004",  # Without 'models/' prefix
+            contents=input_list,
         )
-        return [e.values for e in response.embeddings]
+        return [list(e.values) for e in response.embeddings]
+
 
 google_ef = GeminiEmbeddingFunction()
 
-# Page Configuration
+# Streamlit Page Configuration
 st.set_page_config(
-    page_title="BoilerVoice AI Dashboard",
-    page_icon="⚡",
-    layout="wide"
+    page_title="BoilerVoice AI Dashboard", page_icon="⚡", layout="wide"
 )
 
 # Custom CSS for Animated Waveform Visualizer
@@ -73,17 +75,17 @@ st.markdown(
 )
 
 
-def ensure_csv_indexed_in_chroma(csv_filename: str = "boiler_inspection_data.csv"):
+def ensure_csv_indexed_in_chroma(
+    csv_filename: str = "boiler_inspection_data.csv",
+):
     """Vectorizes CSV rows into ChromaDB using custom Gemini API embeddings."""
     if not os.path.exists(csv_filename):
         return None
 
     chroma_client = chromadb.PersistentClient(path="./chroma_db")
     collection = chroma_client.get_or_create_collection(
-    name="boiler_telemetry",
-    embedding_function=google_ef
-)
-    
+        name="boiler_telemetry", embedding_function=google_ef
+    )
 
     # Only index if collection is currently empty
     if collection.count() == 0:
@@ -109,9 +111,7 @@ def transcribe_audio_bytes(audio_bytes) -> str:
 
     with open(temp_input, "rb") as audio_file:
         transcription = elevenlabs_client.speech_to_text.convert(
-            file=audio_file,
-            model_id="scribe_v2",
-            tag_audio_events=False
+            file=audio_file, model_id="scribe_v2", tag_audio_events=False
         )
     return transcription.text.strip()
 
@@ -133,9 +133,7 @@ def query_llm_vector_rag(
         "You are an industrial boiler inspection assistant. "
         "Answer the user's question concisely in 1-2 natural sentences based strictly on the retrieved dataset records."
     )
-    full_prompt = (
-        f"RETRIEVED DATASET RECORDS:\n{retrieved_context}\n\nUSER QUESTION: {transcribed_text}"
-    )
+    full_prompt = f"RETRIEVED DATASET RECORDS:\n{retrieved_context}\n\nUSER QUESTION: {transcribed_text}"
 
     max_retries = 3
     for attempt in range(max_retries):
@@ -149,7 +147,7 @@ def query_llm_vector_rag(
 
         except ServerError:
             if attempt < max_retries - 1:
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
             else:
                 return "⚠️ The AI service is currently busy (503). Please wait a few seconds and try again."
         except Exception as e:
@@ -157,7 +155,9 @@ def query_llm_vector_rag(
 
 
 def generate_tts_file(
-    text: str, output_path: str = "response.mp3", voice_id="pNInz6obpgDQGcFmaJgB"
+    text: str,
+    output_path: str = "response.mp3",
+    voice_id="pNInz6obpgDQGcFmaJgB",
 ) -> str:
     """Generates audio using ElevenLabs TTS and saves it for browser playback."""
     audio = elevenlabs_client.text_to_speech.convert(
@@ -176,7 +176,9 @@ def generate_tts_file(
 
 # --- UI LAYOUT ---
 st.title("⚡ BoilerVoice AI Dashboard")
-st.caption("Live Industrial Inspection Dashboard with Voice-Activated Vector RAG Pipeline")
+st.caption(
+    "Live Industrial Inspection Dashboard with Voice-Activated Vector RAG Pipeline"
+)
 
 col_left, col_right = st.columns([1, 1], gap="large")
 
@@ -188,7 +190,9 @@ with col_left:
     if os.path.exists(csv_file):
         df_data = pd.read_csv(csv_file)
         st.dataframe(df_data.head(100), use_container_width=True, height=400)
-        st.caption(f"Showing preview of top rows from total {len(df_data)} records.")
+        st.caption(
+            f"Showing preview of top rows from total {len(df_data)} records."
+        )
     else:
         st.error(f"❌ Dataset file '{csv_file}' not found in current folder.")
 
@@ -219,14 +223,20 @@ with col_right:
                 st.info(transcribed_text)
 
                 # Step 2: Query Gemini with Vector Retrieval
-                with st.spinner("🤖 Searching ChromaDB & Querying Gemini AI..."):
-                    llm_answer = query_llm_vector_rag(transcribed_text, csv_filename=csv_file)
+                with st.spinner(
+                    "🤖 Searching ChromaDB & Querying Gemini AI..."
+                ):
+                    llm_answer = query_llm_vector_rag(
+                        transcribed_text, csv_filename=csv_file
+                    )
 
                 st.markdown("**💡 Gemini Response:**")
                 st.success(llm_answer)
 
                 # Step 3: Text to Speech & Playback
-                if not llm_answer.startswith("⚠️") and not llm_answer.startswith("Error"):
+                if not llm_answer.startswith("⚠️") and not llm_answer.startswith(
+                    "Error"
+                ):
                     with st.spinner("🔊 Generating audio response..."):
                         try:
                             audio_output_path = generate_tts_file(llm_answer)
@@ -245,8 +255,14 @@ with col_right:
                                 """,
                                 unsafe_allow_html=True,
                             )
-                            st.audio(audio_output_path, format="audio/mp3", autoplay=True)
+                            st.audio(
+                                audio_output_path,
+                                format="audio/mp3",
+                                autoplay=True,
+                            )
                         except Exception as e:
                             st.error(f"Audio playback error: {e}")
             else:
-                st.warning("⚠️ Could not recognize any speech. Please speak louder or check microphone permissions.")
+                st.warning(
+                    "⚠️ Could not recognize any speech. Please speak louder or check microphone permissions."
+                )
