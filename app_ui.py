@@ -146,7 +146,7 @@ def query_llm_vector_rag(
     for attempt in range(max_retries):
         try:
             response = genai_client.models.generate_content(
-                model="gemini-1.5-flash",
+                model="gemini-3.7-flash",
                 contents=full_prompt,
                 config={"system_instruction": system_instruction},
             )
